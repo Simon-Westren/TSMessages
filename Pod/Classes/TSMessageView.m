@@ -10,6 +10,7 @@
 #import "HexColor.h"
 #import "TSBlurView.h"
 #import "TSMessage.h"
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
 
 #define TSMessageViewMinimumPadding 15.0
 
@@ -20,22 +21,49 @@ static NSMutableDictionary *_notificationDesign;
 @interface TSMessage (TSMessageView)
 - (void)fadeOutNotification:(TSMessageView *)currentView; // private method of TSMessage, but called by TSMessageView in -[fadeMeOut]
 @end
+=======
+#import "TSMessage+Private.h"
+#import "TSMessageView+Private.h"
+
+#define TSMessageViewPadding 15.0
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
 
 @interface TSMessageView () <UIGestureRecognizerDelegate>
+@property (nonatomic) NSDictionary *config;
+@property (nonatomic) UILabel *titleLabel;
+@property (nonatomic) UILabel *contentLabel;
+@property (nonatomic) UIImageView *iconImageView;
+@property (nonatomic) UIButton *button;
+@property (nonatomic) UITapGestureRecognizer *tapRecognizer;
+@property (nonatomic) UISwipeGestureRecognizer *swipeRecognizer;
+@property (nonatomic) TSBlurView *backgroundBlurView;
+@property (nonatomic, copy) TSMessageCallback buttonCallback;
+@property (nonatomic, getter=isMessageFullyDisplayed) BOOL messageFullyDisplayed;
+@end
 
-/** The displayed title of this message */
-@property (nonatomic, strong) NSString *title;
+@implementation TSMessageView
 
-/** The displayed subtitle of this message view */
-@property (nonatomic, strong) NSString *subtitle;
+- (id)initWithTitle:(NSString *)title subtitle:(NSString *)subtitle image:(UIImage *)image type:(TSMessageType)type
+{
+    if ((self = [self init]))
+    {
+        self.userDismissEnabled = YES;
+        self.duration = TSMessageDurationAutomatic;
+        self.position = TSMessagePositionTop;
+        
+        [self setupConfigForType:type];
+        [self setupBackgroundView];
+        [self setupTitle:title];
+        [self setupSubtitle:subtitle];
+        [self setupImage:image];
+        [self setupAutoresizing];
+        [self setupGestureRecognizers];
+    }
+    
+    return self;
+}
 
-/** The title of the added button */
-@property (nonatomic, strong) NSString *buttonTitle;
-
-/** The view controller this message is displayed in */
-@property (nonatomic, strong) UIViewController *viewController;
-
-
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
 /** Internal properties needed to resize the view on device rotation properly */
 @property (nonatomic, strong) UILabel *titleLabel;
 
@@ -45,19 +73,90 @@ static NSMutableDictionary *_notificationDesign;
 @property (nonatomic, strong) UIView *borderView;
 @property (nonatomic, strong) UIImageView *backgroundImageView;
 @property (nonatomic, strong) TSBlurView *backgroundBlurView; // Only used in iOS 7
+=======
+#pragma mark - Setup helpers
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
 
-@property (nonatomic, assign) CGFloat textSpaceLeft;
-@property (nonatomic, assign) CGFloat textSpaceRight;
+- (void)setupConfigForType:(TSMessageType)type
+{
+    NSString *config;
+    
+    switch (type)
+    {
+        case TSMessageTypeError: config = @"error"; break;
+        case TSMessageTypeSuccess: config = @"success"; break;
+        case TSMessageTypeWarning: config = @"warning"; break;
+            
+        default: config = @"message"; break;
+    }
+    
+    self.config = [TSMessage design][config];
+}
 
-@property (copy) void (^callback)();
-@property (copy) void (^buttonCallback)();
+- (void)setupBackgroundView
+{
+    self.backgroundBlurView = [[TSBlurView alloc] init];
+    self.backgroundBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    self.backgroundBlurView.blurTintColor = [UIColor colorWithHexString:self.config[@"backgroundColor"]];
+    
+    [self addSubview:self.backgroundBlurView];
+}
 
-- (CGFloat)updateHeightOfMessageView;
-- (void)layoutSubviews;
+- (void)setupAutoresizing
+{
+    self.autoresizingMask = (self.position == TSMessagePositionTop) ?
+        (UIViewAutoresizingFlexibleWidth) :
+        (UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
+}
 
-@end
+- (void)setupTitle:(NSString *)title
+{
+    UIColor *fontColor = [UIColor colorWithHexString:self.config[@"textColor"] alpha:1];
+    CGFloat fontSize = [self.config[@"titleFontSize"] floatValue];
+    NSString *fontName = self.config[@"titleFontName"];
+    
+    self.titleLabel = [[UILabel alloc] init];
+    self.titleLabel.numberOfLines = 0;
+    self.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    self.titleLabel.shadowOffset = CGSizeMake([self.config[@"shadowOffsetX"] floatValue], [self.config[@"shadowOffsetY"] floatValue]);
+    self.titleLabel.shadowColor = [UIColor colorWithHexString:self.config[@"shadowColor"] alpha:1];
+    self.titleLabel.backgroundColor = [UIColor clearColor];
+    self.titleLabel.textColor = fontColor;
+    self.titleLabel.text = title;
+    self.titleLabel.font = fontName ?
+        [UIFont fontWithName:fontName size:fontSize] :
+        [UIFont boldSystemFontOfSize:fontSize];
+    
+    [self addSubview:self.titleLabel];
+}
 
+- (void)setupSubtitle:(NSString *)subtitle
+{
+    if (!subtitle.length) return;
+    
+    UIColor *contentTextColor = [UIColor colorWithHexString:self.config[@"contentTextColor"] alpha:1];
+    UIColor *fontColor = [UIColor colorWithHexString:self.config[@"textColor"] alpha:1];
+    CGFloat fontSize = [self.config[@"contentFontSize"] floatValue];
+    NSString *fontName = self.config[@"contentFontName"];
+    
+    if (!contentTextColor) contentTextColor = fontColor;
+    
+    self.contentLabel = [[UILabel alloc] init];
+    self.contentLabel.numberOfLines = 0;
+    self.contentLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    self.contentLabel.shadowOffset = CGSizeMake([self.config[@"shadowOffsetX"] floatValue], [self.config[@"shadowOffsetY"] floatValue]);
+    self.contentLabel.shadowColor = [UIColor colorWithHexString:self.config[@"shadowColor"] alpha:1];
+    self.contentLabel.backgroundColor = [UIColor clearColor];
+    self.contentLabel.textColor = contentTextColor;
+    self.contentLabel.text = subtitle;
+    self.contentLabel.font = fontName ?
+        [UIFont fontWithName:fontName size:fontSize] :
+        [UIFont systemFontOfSize:fontSize];
+    
+    [self addSubview:self.contentLabel];
+}
 
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
 @implementation TSMessageView{
     TSMessageNotificationType notificationType;
 }
@@ -140,9 +239,21 @@ static NSMutableDictionary *_notificationDesign;
 
 
 
-
-+ (NSMutableDictionary *)notificationDesign
+=======
+- (void)setupImage:(UIImage *)image
 {
+    if (!image && self.config[@"imageName"] != [NSNull null] && [self.config[@"imageName"] length]) image = [UIImage imageNamed:self.config[@"imageName"]];
+    
+    self.iconImageView = [[UIImageView alloc] initWithImage:image];
+    self.iconImageView.frame = CGRectMake(TSMessageViewPadding * 2, TSMessageViewPadding, image.size.width, image.size.height);
+    
+    [self addSubview:self.iconImageView];
+}
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
+
+- (void)setupGestureRecognizers
+{
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
     if (!_notificationDesign)
     {
         NSString *path = [[NSBundle bundleForClass:self.class] pathForResource:TSDesignFileName ofType:@"json"];
@@ -153,13 +264,22 @@ static NSMutableDictionary *_notificationDesign;
                                                                                                             options:kNilOptions
                                                                                                               error:nil]];
     }
+=======
+    self.tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleViewTap:)];
+    self.tapRecognizer.delegate = self;
+    [self addGestureRecognizer:self.tapRecognizer];
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
     
-    return _notificationDesign;
+    self.swipeRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleViewSwipe:)];
+    self.swipeRecognizer.direction = (self.position == TSMessagePositionTop ? UISwipeGestureRecognizerDirectionUp : UISwipeGestureRecognizerDirectionDown);
+    [self addGestureRecognizer:self.swipeRecognizer];
 }
 
+#pragma mark - Message view attributes and actions
 
-+ (void)addNotificationDesignFromFile:(NSString *)filename
+- (void)setButtonWithTitle:(NSString *)title callback:(TSMessageCallback)callback
 {
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
     NSString *path = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:filename];
     if ([[NSFileManager defaultManager] fileExistsAtPath:path])
     {
@@ -208,11 +328,53 @@ canBeDismissedByUser:(BOOL)dismissingEnabled
      buttonCallback:(void (^)())buttonCallback
          atPosition:(TSMessageNotificationPosition)position
 canBeDismissedByUser:(BOOL)dismissingEnabled
-{
-    NSDictionary *notificationDesign = [TSMessageView notificationDesign];
+=======
+    self.buttonCallback = callback;
     
-    if ((self = [self init]))
+    UIImage *buttonBackgroundImage = [[UIImage imageNamed:self.config[@"buttonBackgroundImageName"]] resizableImageWithCapInsets:UIEdgeInsetsMake(15.0, 12.0, 15.0, 11.0)];
+    UIColor *buttonTitleShadowColor = [UIColor colorWithHexString:self.config[@"buttonTitleShadowColor"] alpha:1];
+    UIColor *buttonTitleTextColor = [UIColor colorWithHexString:self.config[@"buttonTitleTextColor"] alpha:1];
+    UIColor *fontColor = [UIColor colorWithHexString:self.config[@"textColor"] alpha:1];
+    
+    if (!buttonBackgroundImage) buttonBackgroundImage = [[UIImage imageNamed:self.config[@"MessageButtonBackground"]] resizableImageWithCapInsets:UIEdgeInsetsMake(15.0, 12.0, 15.0, 11.0)];
+    if (!buttonTitleShadowColor) buttonTitleShadowColor = [UIColor colorWithHexString:self.config[@"shadowColor"] alpha:1];
+    if (!buttonTitleTextColor) buttonTitleTextColor = fontColor;
+    
+    self.button = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.button.contentEdgeInsets = UIEdgeInsetsMake(0, 5, 0, 5);
+    self.button.titleLabel.font = [UIFont boldSystemFontOfSize:14];
+    self.button.titleLabel.shadowOffset = CGSizeMake([self.config[@"buttonTitleShadowOffsetX"] floatValue], [self.config[@"buttonTitleShadowOffsetY"] floatValue]);
+    
+    [self.button setTitle:title forState:UIControlStateNormal];
+    [self.button setBackgroundImage:buttonBackgroundImage forState:UIControlStateNormal];
+    [self.button setTitleShadowColor:buttonTitleShadowColor forState:UIControlStateNormal];
+    [self.button setTitleColor:buttonTitleTextColor forState:UIControlStateNormal];
+    [self.button addTarget:self action:@selector(handleButtonTap:) forControlEvents:UIControlEventTouchUpInside];
+    [self.button sizeToFit];
+    
+    self.button.frame = CGRectMake(self.viewController.view.bounds.size.width - TSMessageViewPadding - self.button.frame.size.width, 0, self.button.frame.size.width, 31);
+    
+    [self addSubview:self.button];
+}
+
+- (void)displayOrEnqueue {
+    [TSMessage displayOrEnqueueMessage:self];
+}
+
+- (void)displayPermanently {
+    [TSMessage displayPermanentMessage:self];
+}
+
+#pragma mark - View handling
+
+- (void)didMoveToWindow
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
+{
+    [super didMoveToWindow];
+    
+    if (self.duration == TSMessageDurationEndless && self.superview && !self.window)
     {
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
         _title = title;
         _subtitle = subtitle;
 		[self setTag:tag];
@@ -455,28 +617,49 @@ canBeDismissedByUser:(BOOL)dismissingEnabled
             tapGesture.delegate = self;
             [self addGestureRecognizer:tapGesture];
         }
+=======
+        [self dismiss];
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
     }
-    return self;
 }
 
-
-- (CGFloat)updateHeightOfMessageView
+- (void)layoutSubviews
 {
+    [super layoutSubviews];
+    
     CGFloat currentHeight;
     CGFloat screenWidth = self.viewController.view.bounds.size.width;
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
     CGFloat padding = [self padding];
     
     self.titleLabel.frame = CGRectMake(self.textSpaceLeft,
                                        padding,
                                        screenWidth - padding - self.textSpaceLeft - self.textSpaceRight,
+=======
+    CGFloat textSpaceRight = self.button.frame.size.width + TSMessageViewPadding;
+    CGFloat textSpaceLeft = 2 * TSMessageViewPadding;
+    UIImage *image = self.iconImageView.image;
+    
+    if (image) textSpaceLeft += image.size.width + 2 * TSMessageViewPadding;
+    
+    // title
+    self.titleLabel.frame = CGRectMake(textSpaceLeft,
+                                       TSMessageViewPadding,
+                                       screenWidth - TSMessageViewPadding - textSpaceLeft - textSpaceRight,
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
                                        0.0);
     [self.titleLabel sizeToFit];
     
-    if ([self.subtitle length])
+    // subtitle
+    if (self.contentLabel)
     {
-        self.contentLabel.frame = CGRectMake(self.textSpaceLeft,
+        self.contentLabel.frame = CGRectMake(textSpaceLeft,
                                              self.titleLabel.frame.origin.y + self.titleLabel.frame.size.height + 5.0,
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
                                              screenWidth - padding - self.textSpaceLeft - self.textSpaceRight,
+=======
+                                             screenWidth - TSMessageViewPadding - textSpaceLeft - textSpaceRight,
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
                                              0.0);
         [self.contentLabel sizeToFit];
         
@@ -484,100 +667,186 @@ canBeDismissedByUser:(BOOL)dismissingEnabled
     }
     else
     {
-        // only the title was set
         currentHeight = self.titleLabel.frame.origin.y + self.titleLabel.frame.size.height;
     }
     
     currentHeight += padding;
     
+    // image
     if (self.iconImageView)
     {
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
         // Check if that makes the popup larger (height)
         if (self.iconImageView.frame.origin.y + self.iconImageView.frame.size.height + padding > currentHeight)
+=======
+        // check if that makes the popup larger (height)
+        if (self.iconImageView.frame.origin.y + self.iconImageView.frame.size.height + TSMessageViewPadding > currentHeight)
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
         {
             currentHeight = self.iconImageView.frame.origin.y + self.iconImageView.frame.size.height + padding;
         }
         else
         {
-            // z-align
-            self.iconImageView.center = CGPointMake([self.iconImageView center].x,
-                                                    round(currentHeight / 2.0));
+            self.iconImageView.center = CGPointMake([self.iconImageView center].x, round(currentHeight / 2.0));
         }
     }
     
-    // z-align button
-    self.button.center = CGPointMake([self.button center].x,
-                                     round(currentHeight / 2.0));
-    
-    if (self.messagePosition == TSMessageNotificationPositionTop)
-    {
-        // Correct the border position
-        CGRect borderFrame = self.borderView.frame;
-        borderFrame.origin.y = currentHeight;
-        self.borderView.frame = borderFrame;
-    }
-    
-    currentHeight += self.borderView.frame.size.height;
-    
     self.frame = CGRectMake(0.0, self.frame.origin.y, self.frame.size.width, currentHeight);
     
-    
+    // button
     if (self.button)
     {
-        self.button.frame = CGRectMake(self.frame.size.width - self.textSpaceRight,
+        self.button.center = CGPointMake([self.button center].x, round(currentHeight / 2.0));
+    
+        self.button.frame = CGRectMake(self.frame.size.width - textSpaceRight,
                                        round((self.frame.size.height / 2.0) - self.button.frame.size.height / 2.0),
                                        self.button.frame.size.width,
                                        self.button.frame.size.height);
     }
     
     
-    CGRect backgroundFrame = CGRectMake(self.backgroundImageView.frame.origin.x,
-                                        self.backgroundImageView.frame.origin.y,
+    CGRect backgroundFrame = CGRectMake(self.backgroundBlurView.frame.origin.x,
+                                        self.backgroundBlurView.frame.origin.y,
                                         screenWidth,
                                         currentHeight);
     
     // increase frame of background view because of the spring animation
-    if ([TSMessage iOS7StyleEnabled])
+    if (self.position == TSMessagePositionTop)
     {
-        if (self.messagePosition == TSMessageNotificationPositionTop)
+        float topOffset = 0.f;
+        
+        UINavigationController *navigationController = self.viewController.navigationController;
+        
+        if (!navigationController && [self.viewController isKindOfClass:[UINavigationController class]])
         {
-            float topOffset = 0.f;
+            navigationController = (UINavigationController *)self.viewController;
+        }
+        
+        BOOL isNavBarIsHidden = !navigationController || self.viewController.navigationController.navigationBarHidden;
+        BOOL isNavBarIsOpaque = !self.viewController.navigationController.navigationBar.isTranslucent && self.viewController.navigationController.navigationBar.alpha == 1;
+        
+        if (isNavBarIsHidden || isNavBarIsOpaque)
+        {
+            topOffset = -30.f;
+        }
+        
+        backgroundFrame = UIEdgeInsetsInsetRect(backgroundFrame, UIEdgeInsetsMake(topOffset, 0.f, topOffset, 0.f));
+    }
+    
+    self.backgroundBlurView.frame = backgroundFrame;
+}
+
+- (void)prepareForDisplay
+{
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
+    
+    CGFloat actualHeight = self.frame.size.height;
+    CGFloat topPosition = -actualHeight;
+    
+    if (self.position == TSMessagePositionBottom)
+    {
+        topPosition = self.viewController.view.bounds.size.height;
+    }
+    
+    self.frame = CGRectMake(0, topPosition, self.viewController.view.bounds.size.width, actualHeight);
+}
+
+- (CGPoint)centerForDisplay
+{
+    CGFloat y;
+    CGFloat heightOffset = CGRectGetHeight(self.frame) / 2;
+    
+    if ([self.delegate respondsToSelector:@selector(customMessageOffsetForPosition:inViewController:)])
+    {
+        CGFloat offset = [self.delegate customMessageOffsetForPosition:self.position inViewController:self.viewController];
+        
+        if (self.position == TSMessagePositionTop)
+        {
+            y = offset + heightOffset;
+        }
+        else
+        {
+            y = self.viewController.view.bounds.size.height - (offset + heightOffset);
+        }
+    }
+    else
+    {
+        __block CGFloat offset = 0;
+        
+        void (^addStatusBarHeightToVerticalOffset)() = ^void() {
+            BOOL isPortrait = UIInterfaceOrientationIsPortrait([[UIApplication sharedApplication] statusBarOrientation]);
+            CGSize statusBarSize = [UIApplication sharedApplication].statusBarFrame.size;
             
-            UINavigationController *navigationController = self.viewController.navigationController;
-            if (!navigationController && [self.viewController isKindOfClass:[UINavigationController class]]) {
-                navigationController = (UINavigationController *)self.viewController;
+            offset += isPortrait ? statusBarSize.height : statusBarSize.width;
+        };
+        
+        if ([self.viewController isKindOfClass:[UINavigationController class]] || [self.viewController.parentViewController isKindOfClass:[UINavigationController class]])
+        {
+            UIViewController *viewController = self.viewController;
+            UINavigationController *navigationController = (UINavigationController *)([viewController isKindOfClass:[UINavigationController class]] ? viewController : viewController.parentViewController);
+            
+            viewController = [[navigationController childViewControllers] firstObject];
+            
+            BOOL isViewIsUnderStatusBar = !viewController.prefersStatusBarHidden;
+            
+            if (!isViewIsUnderStatusBar && navigationController.parentViewController == nil)
+            {
+                // strange but true
+                isViewIsUnderStatusBar = ![self isNavigationBarInNavigationControllerHidden:navigationController];
             }
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
             BOOL isNavBarIsHidden = !navigationController || [TSMessage isNavigationBarInNavigationControllerHidden:navigationController];
             BOOL isNavBarIsOpaque = !navigationController.navigationBar.isTranslucent && navigationController.navigationBar.alpha == 1;
+=======
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
             
-            if (isNavBarIsHidden || isNavBarIsOpaque) {
-                topOffset = -30.f;
+            if (![self isNavigationBarInNavigationControllerHidden:navigationController])
+            {
+                offset = [navigationController navigationBar].bounds.size.height;
+                addStatusBarHeightToVerticalOffset();
             }
-            backgroundFrame = UIEdgeInsetsInsetRect(backgroundFrame, UIEdgeInsetsMake(topOffset, 0.f, 0.f, 0.f));
+            else if (isViewIsUnderStatusBar)
+            {
+                addStatusBarHeightToVerticalOffset();
+            }
         }
-        else if (self.messagePosition == TSMessageNotificationPositionBottom)
+        else
         {
-            backgroundFrame = UIEdgeInsetsInsetRect(backgroundFrame, UIEdgeInsetsMake(0.f, 0.f, -30.f, 0.f));
+            addStatusBarHeightToVerticalOffset();
+        }
+        
+        if (self.position == TSMessagePositionTop)
+        {
+            y = offset + heightOffset;
+        }
+        else
+        {
+            y = self.viewController.view.bounds.size.height - heightOffset;
+            
+            if (!self.viewController.navigationController.isToolbarHidden)
+            {
+                y -= CGRectGetHeight(self.viewController.navigationController.toolbar.bounds);
+            }
         }
     }
     
-    self.backgroundImageView.frame = backgroundFrame;
-    self.backgroundBlurView.frame = backgroundFrame;
+    CGPoint center = CGPointMake(self.center.x, y);
     
-    return currentHeight;
+    return center;
 }
 
-- (void)layoutSubviews
+#pragma mark - Actions
+
+- (void)handleButtonTap:(id) sender
 {
-    [super layoutSubviews];
-    [self updateHeightOfMessageView];
+    if (self.buttonCallback)
+    {
+        self.buttonCallback(self);
+    }
 }
 
-- (void)fadeMeOut
-{
-    [[TSMessage sharedMessage] performSelectorOnMainThread:@selector(fadeOutNotification:) withObject:self waitUntilDone:NO];
-}
-
+<<<<<<< HEAD:Pod/Classes/TSMessageView.m
 - (void)didMoveToWindow
 {
     [super didMoveToWindow];
@@ -585,36 +854,84 @@ canBeDismissedByUser:(BOOL)dismissingEnabled
     {
         // view controller was dismissed, let's fade out
         [self fadeMeOut];
-    }
-}
-#pragma mark - Target/Action
-
-- (void)buttonTapped:(id) sender
+=======
+- (void)handleViewTap:(UITapGestureRecognizer *)tapRecognizer
 {
-    if (self.buttonCallback)
+    if (tapRecognizer.state != UIGestureRecognizerStateRecognized) return;
+    
+    if (self.isUserDismissEnabled)
     {
-        self.buttonCallback();
+        [self dismiss];
     }
     
-    [self fadeMeOut];
-}
-
-- (void)handleTap:(UITapGestureRecognizer *)tapGesture
-{
-    if (tapGesture.state == UIGestureRecognizerStateRecognized)
+    if (self.tapCallback)
     {
-        if (self.callback)
-        {
-            self.callback();
-        }
+        self.tapCallback(self);
+>>>>>>> upstream/develop:TSMessages/Views/TSMessageView.m
     }
 }
 
-#pragma mark - UIGestureRecognizerDelegate
+- (void)handleViewSwipe:(UISwipeGestureRecognizer *)swipeRecognizer
+{
+    if (swipeRecognizer.state != UIGestureRecognizerStateRecognized) return;
+    
+    if (self.isUserDismissEnabled)
+    {
+        [self dismiss];
+    }
+    
+    if (self.swipeCallback)
+    {
+        self.swipeCallback(self);
+    }
+}
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
 {
-    return ! ([touch.view isKindOfClass:[UIControl class]]);
+    return !([touch.view isKindOfClass:[UIControl class]]);
+}
+
+- (void)dismiss
+{
+    if (self == [TSMessage sharedMessage].currentMessage)
+    {
+        [[TSMessage sharedMessage] performSelectorOnMainThread:@selector(dismissCurrentMessage) withObject:nil waitUntilDone:NO];
+    }
+    else
+    {
+        [[TSMessage sharedMessage] performSelectorOnMainThread:@selector(dismissMessage:) withObject:self waitUntilDone:NO];
+    }
+}
+
+- (void)setPosition:(TSMessagePosition)position {
+    _position = position;
+    
+    self.swipeRecognizer.direction = (self.position == TSMessagePositionTop ? UISwipeGestureRecognizerDirectionUp : UISwipeGestureRecognizerDirectionDown);
+}
+
+#pragma mark - Private
+
+- (NSString *)title
+{
+    return self.titleLabel.text;
+}
+
+- (NSString *)subtitle
+{
+    return self.contentLabel.text;
+}
+
+/** Indicates whether the current navigationBar is hidden by isNavigationBarHidden on the
+ UINavigationController or isHidden on the navigationBar of the UINavigationController */
+- (BOOL)isNavigationBarInNavigationControllerHidden:(UINavigationController *)navController
+{
+    if (navController.isNavigationBarHidden) {
+        return YES;
+    } else if (navController.navigationBar.isHidden) {
+        return YES;
+    } else {
+        return NO;
+    }
 }
 
 @end
